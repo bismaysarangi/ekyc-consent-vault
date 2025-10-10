@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getReadOnlyContract, hashFile } from "@/lib/web3";
+import { getContract, hashFile } from "@/lib/web3";
 
 export default function VerifierTab({ account }: { account: string }) {
   const [holderAddress, setHolderAddress] = useState("");
@@ -28,8 +28,8 @@ export default function VerifierTab({ account }: { account: string }) {
       console.log("Document hash:", computedHash);
       setDocumentHash(computedHash);
 
-      // Get contract and verify
-      const contract = await getReadOnlyContract();
+      // Get contract with signer (so msg.sender is the verifier's address)
+      const contract = await getContract();
       const isValid = await contract.verifyKyc(holderAddress, computedHash);
 
       setVerificationResult(isValid);
