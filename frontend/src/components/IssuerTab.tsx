@@ -21,12 +21,12 @@ export default function IssuerTab({ account }: { account: string }) {
       setTxHash("");
 
       // Hash the file
-      const documentHash = await hashFile(file);
-      console.log("Document hash:", documentHash);
+      const computedHash = await hashFile(file);
+      console.log("Document hash:", computedHash);
 
       // Get contract and issue KYC
       const contract = await getContract();
-      const tx = await contract.issueKyc(holderAddress, documentHash);
+      const tx = await contract.issueKyc(holderAddress, computedHash);
 
       setTxHash(tx.hash);
       await tx.wait();
@@ -36,11 +36,9 @@ export default function IssuerTab({ account }: { account: string }) {
       setFile(null);
     } catch (error: unknown) {
       console.error(error);
-      if (error instanceof Error) {
-        alert("Error: " + error.message);
-      } else {
-        alert("An unknown error occurred");
-      }
+      const errorMessage =
+        error instanceof Error ? error.message : "Transaction failed";
+      alert("Error: " + errorMessage);
     } finally {
       setLoading(false);
     }

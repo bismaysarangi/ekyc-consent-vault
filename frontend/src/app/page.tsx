@@ -128,11 +128,9 @@ export default function Home() {
             </div>
 
             {/* Tab Content */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              {activeTab === "issuer" && <IssuerTab account={account} />}
-              {activeTab === "holder" && <HolderTab account={account} />}
-              {activeTab === "verifier" && <VerifierTab account={account} />}
-            </div>
+            {activeTab === "issuer" && <IssuerTab account={account} />}
+            {activeTab === "holder" && <HolderTab account={account} />}
+            {activeTab === "verifier" && <VerifierTab account={account} />}
             <HelpModal />
           </div>
         )}

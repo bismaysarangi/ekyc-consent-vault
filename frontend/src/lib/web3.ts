@@ -1,23 +1,16 @@
 import { BrowserProvider, Contract, ethers } from "ethers";
 import { CONTRACT_ADDRESS, KYC_VAULT_ABI, SEPOLIA_CHAIN_ID } from "./contract";
 
-interface EthereumProvider {
-  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-  on?: (event: string, callback: (...args: unknown[]) => void) => void;
-  removeListener?: (
-    event: string,
-    callback: (...args: unknown[]) => void
-  ) => void;
-}
-
-interface SwitchEthereumChainParams {
-  chainId: string;
-}
-
-interface EthereumRequestArgs {
+// Define specific types for Ethereum requests
+type EthereumRequestArgs = {
   method: string;
-  params?: SwitchEthereumChainParams[];
-}
+  params?: unknown[];
+};
+
+type EthereumProvider = {
+  request: (args: EthereumRequestArgs) => Promise<unknown>;
+  isMetaMask?: boolean;
+};
 
 declare global {
   interface Window {
@@ -25,19 +18,18 @@ declare global {
   }
 }
 
-interface EthereumRpcError extends Error {
+// Define specific error type for Ethereum errors
+interface EthereumError extends Error {
   code: number;
   message: string;
 }
 
-function isEthereumRpcError(error: unknown): error is EthereumRpcError {
+function isEthereumError(error: unknown): error is EthereumError {
   return (
     typeof error === "object" &&
     error !== null &&
     "code" in error &&
-    typeof (error as EthereumRpcError).code === "number" &&
-    "message" in error &&
-    typeof (error as EthereumRpcError).message === "string"
+    "message" in error
   );
 }
 
@@ -49,16 +41,15 @@ export async function connectWallet(): Promise<string> {
   const provider = new BrowserProvider(window.ethereum);
   const accounts = (await provider.send("eth_requestAccounts", [])) as string[];
 
-  // Check if on Sepolia network
   const network = await provider.getNetwork();
   if (Number(network.chainId) !== SEPOLIA_CHAIN_ID) {
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0xaa36a7" }], // Sepolia chainId in hex
-      } as EthereumRequestArgs);
+        params: [{ chainId: "0xaa36a7" }],
+      });
     } catch (error: unknown) {
-      if (isEthereumRpcError(error) && error.code === 4902) {
+      if (isEthereumError(error) && error.code === 4902) {
         throw new Error("Please add Sepolia network to MetaMask");
       }
       throw error;
@@ -94,10 +85,22 @@ export function hashFile(file: File): Promise<string> {
     reader.onload = async (e) => {
       try {
         const arrayBuffer = e.target?.result as ArrayBuffer;
-        const uint8Array = new Uint8Array(arrayBuffer);
-        const hash = ethers.keccak256(uint8Array);
+        const bytes = new Uint8Array(arrayBuffer);
+
+        const hexString =
+          "0x" +
+          Array.from(bytes)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+
+        const hash = ethers.keccak256(hexString);
+
+        console.log("File size:", bytes.length, "bytes");
+        console.log("File hash:", hash);
+
         resolve(hash);
       } catch (error) {
+        console.error("Hashing error:", error);
         reject(error);
       }
     };
@@ -108,5 +111,8 @@ export function hashFile(file: File): Promise<string> {
 }
 
 export function shortenAddress(address: string): string {
+  if (!address || address.length < 10) {
+    return address;
+  }
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }

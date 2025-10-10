@@ -11,6 +11,7 @@ export default function VerifierTab({ account }: { account: string }) {
   const [verificationResult, setVerificationResult] = useState<boolean | null>(
     null
   );
+  const [documentHash, setDocumentHash] = useState("");
 
   const handleVerify = async () => {
     if (!holderAddress || !file) {
@@ -23,21 +24,20 @@ export default function VerifierTab({ account }: { account: string }) {
       setVerificationResult(null);
 
       // Hash the file
-      const documentHash = await hashFile(file);
-      console.log("Document hash:", documentHash);
+      const computedHash = await hashFile(file);
+      console.log("Document hash:", computedHash);
+      setDocumentHash(computedHash);
 
       // Get contract and verify
       const contract = await getReadOnlyContract();
-      const isValid = await contract.verifyKyc(holderAddress, documentHash);
+      const isValid = await contract.verifyKyc(holderAddress, computedHash);
 
       setVerificationResult(isValid);
     } catch (error: unknown) {
       console.error(error);
-      if (error instanceof Error) {
-        alert("Error: " + error.message);
-      } else {
-        alert("An unknown error occurred");
-      }
+      const errorMessage =
+        error instanceof Error ? error.message : "Verification failed";
+      alert("Error: " + errorMessage);
     } finally {
       setLoading(false);
     }
@@ -147,6 +147,24 @@ export default function VerifierTab({ account }: { account: string }) {
                 ? "The document hash matches and the holder has granted you consent."
                 : "Either the document hash doesn&apos;t match, consent is not granted, or the KYC is invalid."}
             </p>
+            {documentHash && (
+              <div className="mt-2 pt-2 border-t">
+                <p
+                  className={`text-xs font-medium ${
+                    verificationResult ? "text-green-800" : "text-red-800"
+                  }`}
+                >
+                  Document Hash (computed):
+                </p>
+                <p
+                  className={`text-xs font-mono break-all mt-1 ${
+                    verificationResult ? "text-green-700" : "text-red-700"
+                  }`}
+                >
+                  {documentHash}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
