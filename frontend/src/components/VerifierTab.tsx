@@ -55,8 +55,7 @@ export default function VerifierTab({ account }: { account: string }) {
         valid: record[2],
       });
 
-      const hasKyc =
-        record[0] !== "0x0000000000000000000000000000000000000000";
+      const hasKyc = record[0] !== "0x0000000000000000000000000000000000000000";
       const kycValid = record[2];
 
       // Check consent
@@ -235,17 +234,6 @@ export default function VerifierTab({ account }: { account: string }) {
                   )}
               </div>
             )}
-
-            {/* Success message if all checks pass */}
-            {debugInfo.hasKyc &&
-              debugInfo.kycValid &&
-              debugInfo.consentGranted && (
-                <div className="mt-3 pt-3 border-t border-slate-300">
-                  <p className="text-sm text-green-700">
-                    ✅ All prerequisites met! Verification in progress...
-                  </p>
-                </div>
-              )}
           </div>
         )}
 
