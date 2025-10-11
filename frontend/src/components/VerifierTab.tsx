@@ -8,7 +8,6 @@ interface DebugInfo {
   hasKyc: boolean;
   kycValid: boolean;
   consentGranted: boolean;
-  hashMatches: boolean;
   issuer: string;
   issuedAt: string;
 }
@@ -56,30 +55,19 @@ export default function VerifierTab({ account }: { account: string }) {
         valid: record[2],
       });
 
-      const hasKyc = record[0] !== "0x0000000000000000000000000000000000000000";
+      const hasKyc =
+        record[0] !== "0x0000000000000000000000000000000000000000";
       const kycValid = record[2];
 
       // Check consent
       const consentGranted = await contract.hasConsent(holderAddress, account);
       console.log("Consent granted:", consentGranted);
 
-      // Try to get document hash (this might fail if you're not authorized)
-      let storedHash = null;
-      try {
-        storedHash = await contract.getDocumentHash(holderAddress);
-        console.log("Stored Hash:", storedHash);
-      } catch (e) {
-        console.log("Cannot read stored hash (not authorized)");
-      }
-
-      const hashMatches = storedHash === computedHash;
-
-      // Set debug info
+      // Set debug info (removed hash matching check)
       setDebugInfo({
         hasKyc,
         kycValid,
         consentGranted,
-        hashMatches,
         issuer: record[0],
         issuedAt: new Date(Number(record[1]) * 1000).toLocaleString(),
       });
@@ -213,59 +201,51 @@ export default function VerifierTab({ account }: { account: string }) {
                 <span className="font-medium">Consent Granted:</span>
                 <span>{debugInfo.consentGranted ? "Yes" : "No"}</span>
               </div>
+            </div>
 
-              <div className="flex items-center gap-2">
-                {debugInfo.hashMatches ? (
-                  <span className="text-green-600">✓</span>
-                ) : (
-                  <span className="text-slate-400">?</span>
+            {/* Specific Issue Highlight - Only show if verification would fail */}
+            {(!debugInfo.hasKyc ||
+              !debugInfo.kycValid ||
+              !debugInfo.consentGranted) && (
+              <div className="mt-3 pt-3 border-t border-slate-300">
+                <p className="text-sm font-semibold text-slate-900 mb-2">
+                  Issue Found:
+                </p>
+                {!debugInfo.hasKyc && (
+                  <p className="text-sm text-red-700">
+                    ❌ No KYC exists for this holder. The issuer needs to issue
+                    KYC first.
+                  </p>
                 )}
-                <span className="font-medium">Hash Matches:</span>
-                <span>
-                  {debugInfo.hashMatches
-                    ? "Yes"
-                    : "Cannot verify (need consent)"}
-                </span>
+                {debugInfo.hasKyc && !debugInfo.kycValid && (
+                  <p className="text-sm text-red-700">
+                    ❌ KYC has been revoked by the issuer.
+                  </p>
+                )}
+                {debugInfo.hasKyc &&
+                  debugInfo.kycValid &&
+                  !debugInfo.consentGranted && (
+                    <p className="text-sm text-red-700">
+                      ❌ The holder has NOT granted consent to your address. Ask
+                      the holder to grant consent to: <br />
+                      <code className="text-xs bg-red-100 px-2 py-1 rounded mt-1 inline-block break-all">
+                        {account}
+                      </code>
+                    </p>
+                  )}
               </div>
-            </div>
+            )}
 
-            {/* Specific Issue Highlight */}
-            <div className="mt-3 pt-3 border-t border-slate-300">
-              <p className="text-sm font-semibold text-slate-900 mb-2">
-                Issue Found:
-              </p>
-              {!debugInfo.hasKyc && (
-                <p className="text-sm text-red-700">
-                  ❌ No KYC exists for this holder. The issuer needs to issue
-                  KYC first.
-                </p>
-              )}
-              {debugInfo.hasKyc && !debugInfo.kycValid && (
-                <p className="text-sm text-red-700">
-                  ❌ KYC has been revoked by the issuer.
-                </p>
-              )}
-              {debugInfo.hasKyc &&
-                debugInfo.kycValid &&
-                !debugInfo.consentGranted && (
-                  <p className="text-sm text-red-700">
-                    ❌ The holder has NOT granted consent to your address. Ask
-                    the holder to grant consent to: <br />
-                    <code className="text-xs bg-red-100 px-2 py-1 rounded mt-1 inline-block break-all">
-                      {account}
-                    </code>
+            {/* Success message if all checks pass */}
+            {debugInfo.hasKyc &&
+              debugInfo.kycValid &&
+              debugInfo.consentGranted && (
+                <div className="mt-3 pt-3 border-t border-slate-300">
+                  <p className="text-sm text-green-700">
+                    ✅ All prerequisites met! Verification in progress...
                   </p>
-                )}
-              {debugInfo.hasKyc &&
-                debugInfo.kycValid &&
-                debugInfo.consentGranted &&
-                !debugInfo.hashMatches && (
-                  <p className="text-sm text-red-700">
-                    ❌ Document hash does NOT match. Make sure you&apos;re
-                    uploading the exact same file that was used during issuance.
-                  </p>
-                )}
-            </div>
+                </div>
+              )}
           </div>
         )}
 
@@ -321,8 +301,8 @@ export default function VerifierTab({ account }: { account: string }) {
               }`}
             >
               {verificationResult
-                ? "The document hash matches and the holder has granted you consent."
-                : "Either the document hash doesn't match, consent is not granted, or the KYC is invalid."}
+                ? "The document hash matches and the holder has granted you consent. ✅"
+                : "The document hash doesn't match the stored record. Make sure you're uploading the exact same file used during issuance."}
             </p>
             {documentHash && (
               <div className="mt-2 pt-2 border-t">
